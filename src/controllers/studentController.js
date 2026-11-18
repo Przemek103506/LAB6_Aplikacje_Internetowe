@@ -1,18 +1,21 @@
 const studentRepository = require("../repositories/mysql/studentRepository");
 const enrollmentRepository = require("../repositories/mysql/enrollmentRepository");
 const { toStudent } = require("../mappers/studentMapper");
+const ApiError = require("../errors/ApiError");
 
 function parseListQuery(query) {
   const page = Math.max(Number(query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(query.limit) || 10, 1), 50);
   const sortBy = typeof query.sort === "string" ? query.sort : undefined;
   const order = query.order === "desc" ? "desc" : "asc";
-  const city = typeof query.city === "string" && query.city.trim() !== ""
-    ? query.city.trim()
-    : undefined;
-  const fieldOfStudy = typeof query.fieldOfStudy === "string" && query.fieldOfStudy.trim() !== ""
-    ? query.fieldOfStudy.trim()
-    : undefined;
+  const city =
+    typeof query.city === "string" && query.city.trim() !== ""
+      ? query.city.trim()
+      : undefined;
+  const fieldOfStudy =
+    typeof query.fieldOfStudy === "string" && query.fieldOfStudy.trim() !== ""
+      ? query.fieldOfStudy.trim()
+      : undefined;
 
   return {
     page,
@@ -41,7 +44,7 @@ async function getById(req, res, next) {
   try {
     const row = await studentRepository.findById(req.params.id);
     if (!row) {
-      return res.status(404).json({ error: "Student not found" });
+      throw new ApiError(404, "Not Found", "Student o podanym identyfikatorze nie istnieje.");
     }
     res.json(toStudent(row));
   } catch (err) {
@@ -53,7 +56,7 @@ async function getStudentCourses(req, res, next) {
   try {
     const student = await studentRepository.findById(req.params.id);
     if (!student) {
-      return res.status(404).json({ error: "Student not found" });
+      throw new ApiError(404, "Not Found", "Student o podanym identyfikatorze nie istnieje.");
     }
     const courses = await enrollmentRepository.findCoursesByStudent(req.params.id);
     res.json(courses);
@@ -75,7 +78,7 @@ async function update(req, res, next) {
   try {
     const updated = await studentRepository.update(req.params.id, req.body);
     if (!updated) {
-      return res.status(404).json({ error: "Student not found" });
+      throw new ApiError(404, "Not Found", "Student o podanym identyfikatorze nie istnieje.");
     }
     const row = await studentRepository.findById(req.params.id);
     res.json(toStudent(row));
@@ -88,7 +91,7 @@ async function remove(req, res, next) {
   try {
     const deleted = await studentRepository.remove(req.params.id);
     if (!deleted) {
-      return res.status(404).json({ error: "Student not found" });
+      throw new ApiError(404, "Not Found", "Student o podanym identyfikatorze nie istnieje.");
     }
     res.status(204).send();
   } catch (err) {
