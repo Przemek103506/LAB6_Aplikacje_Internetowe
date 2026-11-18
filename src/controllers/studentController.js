@@ -1,12 +1,33 @@
 const studentRepository = require("../repositories/mysql/studentRepository");
+const enrollmentRepository = require("../repositories/mysql/enrollmentRepository");
 const { toStudent } = require("../mappers/studentMapper");
+
+function parseListQuery(query) {
+  const page = Math.max(Number(query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(query.limit) || 10, 1), 50);
+  const sortBy = typeof query.sort === "string" ? query.sort : undefined;
+  const order = query.order === "desc" ? "desc" : "asc";
+  const city = typeof query.city === "string" && query.city.trim() !== ""
+    ? query.city.trim()
+    : undefined;
+  const fieldOfStudy = typeof query.fieldOfStudy === "string" && query.fieldOfStudy.trim() !== ""
+    ? query.fieldOfStudy.trim()
+    : undefined;
+
+  return {
+    page,
+    limit,
+    sortBy,
+    order,
+    city,
+    fieldOfStudy
+  };
+}
 
 async function getAll(req, res, next) {
   try {
-    const result = await studentRepository.findAll(req.query);
-    if (Array.isArray(result)) {
-      return res.json(result.map(toStudent));
-    }
+    const params = parseListQuery(req.query);
+    const result = await studentRepository.findAll(params);
     res.json({
       ...result,
       items: result.items.map(toStudent)
@@ -23,6 +44,19 @@ async function getById(req, res, next) {
       return res.status(404).json({ error: "Student not found" });
     }
     res.json(toStudent(row));
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getStudentCourses(req, res, next) {
+  try {
+    const student = await studentRepository.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+    const courses = await enrollmentRepository.findCoursesByStudent(req.params.id);
+    res.json(courses);
   } catch (err) {
     next(err);
   }
@@ -62,4 +96,11 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { getAll, getById, create, update, remove };
+module.exports = {
+  getAll,
+  getById,
+  getStudentCourses,
+  create,
+  update,
+  remove
+};
